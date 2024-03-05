@@ -1,0 +1,14 @@
+[package]
+name = "rpv-selfsigned"
+version = "0.1.0"
+edition = "2021"
+
+[lib]
+crate_type = ["cdylib", "rlib"]
+
+[dependencies]
+rustls-platform-verifier = "0.2.0"
+ureq = "2.9.6"
+
+[target.'cfg(target_os = "android")'.dependencies]
+jni = "0.19"
