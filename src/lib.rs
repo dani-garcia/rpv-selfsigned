@@ -1,24 +1,32 @@
-use std::{error::Error, sync::Arc};
+use std::{error::Error, time::Duration};
 
 pub fn network_test() -> Result<String, Box<dyn Error>> {
-    // Reqwest is still using rustls 0.21, so won't work with rpv 0.2
-    /*let client = reqwest::blocking::Client::builder()
-        .use_preconfigured_tls(rustls_platform_verifier::tls_config())
-        .build()?;
+    use rustls::{
+        client::danger::ServerCertVerifier,
+        pki_types::{CertificateDer, ServerName, UnixTime},
+    };
 
-    let response = client.get("https://untrusted-root.badssl.com/").send()?;
-    let body = response.text()?;*/
+    let cert = CertificateDer::from(&include_bytes!("../badssl.com.cer")[..]);
+    let ca = CertificateDer::from(&include_bytes!("../badssl.com.ca.cer")[..]);
+    let intermediates = vec![ca];
 
-    let agent = ureq::builder()
-        .tls_config(Arc::new(rustls_platform_verifier::tls_config()))
-        .build();
+    let server_name = ServerName::try_from("untrusted-root.badssl.com")?;
 
-    let body = agent
-        .get("https://untrusted-root.badssl.com/")
-        .call()?
-        .into_string()?;
+    let ocsp_response = Vec::new();
 
-    Ok(body)
+    // This time is copied from the rustls-platform-verifier tests
+    // Monday, March 11, 2024 8:30:25 PM UTC
+    let now = UnixTime::since_unix_epoch(Duration::from_secs(1_710_189_025));
+
+    let result = rustls_platform_verifier::Verifier::new().verify_server_cert(
+        &cert,
+        &intermediates,
+        &server_name,
+        &ocsp_response,
+        now,
+    )?;
+
+    Ok(format!("Success: {:?}", result))
 }
 
 #[cfg(target_os = "android")]
